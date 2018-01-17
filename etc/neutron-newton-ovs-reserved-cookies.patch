@@ -1,0 +1,32 @@
+--- /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/br_cookie.py~	2016-08-29 12:09:29.000000000 -0600
++++ /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/br_cookie.py	2016-10-27 16:29:22.185857224 -0600
+@@ -15,6 +15,8 @@
+ 
+ from neutron.agent.common import ovs_lib
+ 
++import os
++import os.path
+ 
+ class OVSBridgeCookieMixin(object):
+     '''Mixin to provide cookie retention functionality
+@@ -24,7 +26,19 @@
+     def __init__(self, *args, **kwargs):
+         super(OVSBridgeCookieMixin, self).__init__(*args, **kwargs)
+         self._reserved_cookies = set()
+-
++        if not os.path.exists("/var/lib/neutron/ovs-default-flows.reserved_cookie"):
++            sc = self.request_cookie()
++            self._reserved_cookies.add(sc)
++            f = file("/var/lib/neutron/ovs-default-flows.reserved_cookie",'w')
++            f.write(str(sc))
++            f.close()
++        else:
++            f = file("/var/lib/neutron/ovs-default-flows.reserved_cookie",'r')
++            sc = int(f.read())
++            f.close()
++            self._reserved_cookies.add(sc)
++        pass
++    
+     @property
+     def reserved_cookies(self):
+         if self._default_cookie not in self._reserved_cookies:

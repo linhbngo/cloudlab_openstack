@@ -1,0 +1,24 @@
+--- /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/launch-instance-model.service.spec.js~	2016-10-06 07:13:37.000000000 -0600
++++ /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/launch-instance-model.service.spec.js	2016-11-14 10:06:00.087144478 -0700
+@@ -836,8 +836,8 @@
+           model.newInstanceSpec.security_groups = [ { id: 'adminId', name: 'admin' },
+                                                     { id: 'demoId', name: 'demo' } ];
+           model.newInstanceSpec.scheduler_hints = {};
+-          model.newInstanceSpec.vol_create = true;
+-          model.newInstanceSpec.vol_delete_on_instance_delete = true;
++          model.newInstanceSpec.vol_create = false;
++          model.newInstanceSpec.vol_delete_on_instance_delete = false;
+           model.newInstanceSpec.vol_device_name = "volTestName";
+           model.newInstanceSpec.vol_size = 10;
+           model.newInstanceSpec.server_groups = [];
+--- /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/source/source.controller.js~	2016-10-06 07:13:37.000000000 -0600
++++ /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/source/source.controller.js	2016-11-14 10:01:27.503142035 -0700
+@@ -417,7 +417,7 @@
+
+     function updateBootSourceSelection(selectedSource) {
+       ctrl.currentBootSource = selectedSource;
+-      if ((selectedSource === bootSourceTypes.IMAGE ||
++      if (false && (selectedSource === bootSourceTypes.IMAGE ||
+            selectedSource === bootSourceTypes.INSTANCE_SNAPSHOT) && $scope.model.volumeBootable) {
+         $scope.model.newInstanceSpec.vol_create = true;
+       } else {

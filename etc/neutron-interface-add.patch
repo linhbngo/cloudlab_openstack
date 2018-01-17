@@ -1,0 +1,70 @@
+--- /usr/lib/python2.7/dist-packages/neutron/db/l3_db.py~	2014-12-09 09:05:35.000000000 -0700
++++ /usr/lib/python2.7/dist-packages/neutron/db/l3_db.py	2015-02-27 12:10:32.216589011 -0700
+573,574c573,582
+<         fixed_ip = {'ip_address': subnet['gateway_ip'],
+<                     'subnet_id': subnet['id']}
+---
+>         #
+>         # PATCH: if this is an external network, don't assign the gateway
+>         # IP!  Find an ip from its allocation range and give it that.  Doh?
+>         #
+>         network = self._core_plugin._get_network(context,subnet['network_id'])
+>         if network.external:
+>             fixed_ip_a = attributes.ATTR_NOT_SPECIFIED
+>         else:
+>             fixed_ip_a = [{'ip_address': subnet['gateway_ip'],
+>                            'subnet_id': subnet['id']},]
+592c600
+<              'fixed_ips': [fixed_ip],
+---
+>              'fixed_ips': fixed_ip_a,
+
+
+    def _add_interface_by_subnet(self, context, router, subnet_id, owner):
+        subnet = self._core_plugin._get_subnet(context, subnet_id)
+        if not subnet['gateway_ip']:
+            msg = _('Subnet for router interface must have a gateway IP')
+            raise n_exc.BadRequest(resource='router', msg=msg)
+        if (subnet['ip_version'] == 6 and subnet['ipv6_ra_mode'] is None
+                and subnet['ipv6_address_mode'] is not None):
+            msg = (_('IPv6 subnet %s configured to receive RAs from an '
+                   'external router cannot be added to Neutron Router.') %
+                   subnet['id'])
+            raise n_exc.BadRequest(resource='router', msg=msg)
+        self._check_for_dup_router_subnet(context, router,
+                                          subnet['network_id'],
+                                          subnet_id,
+                                          subnet['cidr'])
+        #
+        # PATCH: if this is an external network, don't assign the gateway
+        # IP!  Find an ip from its allocation range and give it that.  Doh?
+        #
+        network = self._core_plugin._get_network(context,subnet['network_id'])
+        if network.external:
+            fixed_ip_a = attributes.ATTR_NOT_SPECIFIED
+        else:
+            fixed_ip_a = [{'ip_address': subnet['gateway_ip'],
+                           'subnet_id': subnet['id']},]
+
+        if subnet['ip_version'] == 6:
+            # Add new prefix to an existing ipv6 port with the same network id
+            # if one exists
+            port = self._find_ipv6_router_port_by_network(router,
+                                                          subnet['network_id'])
+            if port:
+                fixed_ips = list(port['port']['fixed_ips'])
+                fixed_ips.append(fixed_ip)
+                return self._core_plugin.update_port(context,
+                        port['port_id'], {'port':
+                            {'fixed_ips': fixed_ips}}), [subnet], False
+
+        return self._core_plugin.create_port(context, {
+            'port':
+            {'tenant_id': subnet['tenant_id'],
+             'network_id': subnet['network_id'],
+             'fixed_ips': fixed_ip_a,
+             'mac_address': attributes.ATTR_NOT_SPECIFIED,
+             'admin_state_up': True,
+             'device_id': router.id,
+             'device_owner': owner,
+             'name': ''}}), [subnet], True

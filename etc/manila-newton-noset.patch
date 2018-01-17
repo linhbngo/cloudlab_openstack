@@ -1,0 +1,20 @@
+--- /usr/lib/python2.7/dist-packages/manila_ui/dashboards/project/shares/__init__.py~	2016-03-04 07:37:15.000000000 -0700
++++ /usr/lib/python2.7/dist-packages/manila_ui/dashboards/project/shares/__init__.py	2016-11-13 16:28:53.309247791 -0700
+@@ -84,7 +84,7 @@
+ def _get_manila_disabled_quotas(request):
+     disabled_quotas = []
+     if not base.is_service_enabled(request, 'share'):
+-        disabled_quotas.extend(MANILA_QUOTA_FIELDS)
++        disabled_quotas.update(MANILA_QUOTA_FIELDS)
+ 
+     return disabled_quotas
+ 
+@@ -126,7 +126,7 @@
+ @wrap(quotas.get_disabled_quotas)
+ def get_disabled_quotas(f, request):
+     disabled_quotas = f(request)
+-    disabled_quotas.extend(_get_manila_disabled_quotas(request))
++    disabled_quotas.update(_get_manila_disabled_quotas(request))
+     return disabled_quotas
+ 
+ 

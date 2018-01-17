@@ -1,0 +1,59 @@
+From de37fc1024a2e02cb9ec0f29a6dbd218474072df Mon Sep 17 00:00:00 2001
+From: zhangdebo1987 <zhangdebo@inspur.com>
+Date: Fri, 1 Sep 2017 13:32:00 +0800
+Subject: NaNJSONEncoder should be used in api "cinder/tenantabsolutelimits"
+
+In api "cinder/tenantabsolutelimits", result maybe contains Infinity values,
+but Infinity values are not supported by JSON standard, so NaNJSONEncoder is
+needed here.
+
+Change-Id: I750637e3214ad46a8b29e1ad565870cdcb827fe1
+Closes-bug: #1714417
+---
+ openstack_dashboard/api/rest/cinder.py                  | 3 ++-
+ openstack_dashboard/test/api_tests/cinder_rest_tests.py | 6 ++++--
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/openstack_dashboard/api/rest/cinder.py b/openstack_dashboard/api/rest/cinder.py
+index 850fe5e..74cafdf 100644
+--- a/openstack_dashboard/api/rest/cinder.py
++++ b/openstack_dashboard/api/rest/cinder.py
+@@ -17,6 +17,7 @@ from django.utils.translation import ugettext_lazy as _
+ from django.views import generic
+ 
+ from openstack_dashboard import api
++from openstack_dashboard.api.rest import json_encoder
+ from openstack_dashboard.api.rest import urls
+ from openstack_dashboard.api.rest import utils as rest_utils
+ from openstack_dashboard.usage import quotas
+@@ -308,7 +309,7 @@ class QoSSpecs(generic.View):
+ class TenantAbsoluteLimits(generic.View):
+     url_regex = r'cinder/tenantabsolutelimits/$'
+ 
+-    @rest_utils.ajax()
++    @rest_utils.ajax(json_encoder=json_encoder.NaNJSONEncoder)
+     def get(self, request):
+         return api.cinder.tenant_absolute_limits(request)
+ 
+diff --git a/openstack_dashboard/test/api_tests/cinder_rest_tests.py b/openstack_dashboard/test/api_tests/cinder_rest_tests.py
+index a575999..ca19e30 100644
+--- a/openstack_dashboard/test/api_tests/cinder_rest_tests.py
++++ b/openstack_dashboard/test/api_tests/cinder_rest_tests.py
+@@ -292,10 +292,12 @@ class CinderRestTestCase(test.TestCase):
+     def test_tenant_absolute_limits_get(self, cc):
+         request = self.mock_rest_request(GET={})
+         cc.tenant_absolute_limits.return_value = \
+-            {'id': 'one'}
++            {'id': 'one', 'val': float('inf')}
+         response = cinder.TenantAbsoluteLimits().get(request)
+         self.assertStatusCode(response, 200)
+-        self.assertEqual(response.content.decode("utf-8"), '{"id": "one"}')
++        response_as_json = json.loads(response.content.decode('utf-8'))
++        self.assertEqual(response_as_json['id'], 'one')
++        self.assertEqual(response_as_json['val'], 1e+999)
+         cc.tenant_absolute_limits.assert_called_once_with(request)
+ 
+     #
+-- 
+cgit v1.1
+

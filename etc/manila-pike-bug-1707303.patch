@@ -1,0 +1,10 @@
+--- /usr/lib/python2.7/dist-packages/manilaclient/v2/shares.py~	2017-07-28 11:00:47.000000000 -0600
++++ /usr/lib/python2.7/dist-packages/manilaclient/v2/shares.py	2017-11-30 12:54:22.160692339 -0700
+@@ -325,6 +325,7 @@
+     def list(self, detailed=True, search_opts=None,
+              sort_key=None, sort_dir=None):
+         """Get a list of all shares."""
++        search_opts = search_opts or {}
+         search_opts.pop("export_location", None)
+         return self.do_list(detailed=detailed, search_opts=search_opts,
+                             sort_key=sort_key, sort_dir=sort_dir)

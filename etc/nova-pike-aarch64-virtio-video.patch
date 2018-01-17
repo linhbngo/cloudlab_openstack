@@ -1,0 +1,54 @@
+--- /usr/lib/python2.7/dist-packages/nova/virt/libvirt/driver.py~	2018-01-03 10:39:32.032697000 -0700
++++ /usr/lib/python2.7/dist-packages/nova/virt/libvirt/driver.py	2018-01-03 10:38:21.648697000 -0700
+@@ -4326,7 +4326,8 @@
+ 
+         if (virt_type not in ("lxc", "uml", "parallels", "xen") or
+                 (virt_type == "xen" and guest.os_type == fields.VMMode.HVM)):
+-            guest.features.append(vconfig.LibvirtConfigGuestFeatureACPI())
++            if caps.host.cpu.arch not in ('aarch64'):
++                guest.features.append(vconfig.LibvirtConfigGuestFeatureACPI())
+             guest.features.append(vconfig.LibvirtConfigGuestFeatureAPIC())
+ 
+         if (virt_type in ("qemu", "kvm") and
+@@ -4354,7 +4355,7 @@
+                 allowed=ALLOWED_QEMU_SERIAL_PORTS, virt_type=virt_type)
+ 
+     def _add_video_driver(self, guest, image_meta, flavor):
+-        VALID_VIDEO_DEVICES = ("vga", "cirrus", "vmvga", "xen", "qxl")
++        VALID_VIDEO_DEVICES = ("vga", "cirrus", "vmvga", "xen", "qxl",'virtio')
+         video = vconfig.LibvirtConfigGuestVideo()
+         # NOTE(ldbragst): The following logic sets the video.type
+         # depending on supported defaults given the architecture,
+@@ -4366,6 +4367,10 @@
+             video.type = 'xen'
+         elif CONF.libvirt.virt_type == 'parallels':
+             video.type = 'vga'
++        elif guestarch in (fields.Architecture.AARCH64):
++            # NOTE(kevinz): Only virtio device type is supported by AARCH64
++            # so use 'virtio' instead when running on AArch64 hardware.
++            video.type = 'virtio'
+         elif guestarch in (fields.Architecture.PPC,
+                            fields.Architecture.PPC64,
+                            fields.Architecture.PPC64LE):
+--- /usr/lib/python2.7/dist-packages/nova/objects/fields.py~	2017-11-14 18:12:29.000000000 -0700
++++ /usr/lib/python2.7/dist-packages/nova/objects/fields.py	2018-01-02 16:07:10.124030000 -0700
+@@ -546,7 +546,7 @@
+     VMVGA = "vmvga"
+     XEN = "xen"
+ 
+-    ALL = (CIRRUS, QXL, VGA, VMVGA, XEN)
++    ALL = (CIRRUS, QXL, VGA, VMVGA, XEN,'virtio')
+ 
+ 
+ class VIFModel(BaseNovaEnum):
+--- /usr/lib/python2.7/dist-packages/nova/conf/compute.py~	2017-11-14 18:12:29.000000000 -0700
++++ /usr/lib/python2.7/dist-packages/nova/conf/compute.py	2018-01-02 15:40:02.228030000 -0700
+@@ -301,7 +301,7 @@
+ Unused unresized base images younger than this will not be removed.
+ """),
+     cfg.StrOpt('pointer_model',
+-        default='usbtablet',
++               default=None,
+         choices=[None, 'ps2mouse', 'usbtablet'],
+         help="""
+ Generic property to specify the pointer type.

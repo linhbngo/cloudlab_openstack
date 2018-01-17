@@ -1,0 +1,72 @@
+From 7d7022f74301db90b8a0ccd634a592991598156e Mon Sep 17 00:00:00 2001
+From: Jan Vondra <jan.vondra@ultimum.io>
+Date: Wed, 13 Sep 2017 17:58:37 +0200
+Subject: Fixed creation neutron api mapping for security groups
+
+Fixed creation of security group and security group rule via
+neutronclient api mapping.
+There was a switch from novaclient to neutronclient
+for creating a security groups and rules in change
+5d5666b10e57a94bcde06c8a296002175d935c7b but
+the argument mapping for this function has not been changed.
+
+Change-Id: I1774b73c61adb3b44a61f3f56f99e85f278deb83
+Closes-Bug: 1716922
+(cherry picked from commit c93f5833e4100d2325994b1bdf8f0d12b70d00c7)
+---
+ manila/network/neutron/api.py                      | 22 ++++++++++++----------
+ manila/share/drivers/service_instance.py           |  1 -
+ 2 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/manila/network/neutron/api.py b/manila/network/neutron/api.py
+index be74e7e..71bfbf5 100644
+--- a/manila/network/neutron/api.py
++++ b/manila/network/neutron/api.py
+@@ -382,23 +382,25 @@ class API(object):
+     def security_group_create(self, name, description=""):
+         try:
+             return self.client.create_security_group(
+-                {"name": name, "description": description})
++                {'security_group': {"name": name, "description": description}})
+         except neutron_client_exc.NeutronClientException as e:
+             raise exception.NetworkException(
+                 code=e.status_code, message=e.message)
+ 
+     def security_group_rule_create(self, parent_group_id,
+                                    ip_protocol=None, from_port=None,
+-                                   to_port=None, cidr=None, group_id=None):
++                                   to_port=None, cidr=None, group_id=None,
++                                   direction="ingress"):
++        request = {"security_group_id": parent_group_id,
++                   "protocol": ip_protocol, "remote_ip_prefix": cidr,
++                   "remote_group_id": group_id, "direction": direction}
++        if ip_protocol != "icmp":
++            request["port_range_min"] = from_port
++            request["port_range_max"] = to_port
++
+         try:
+-            return self.client.create_security_group_rule({
+-                "parent_group_id": parent_group_id,
+-                "ip_protocol": ip_protocol,
+-                "from_port": from_port,
+-                "to_port": to_port,
+-                "cidr": cidr,
+-                "group_id": group_id,
+-            })
++            return self.client.create_security_group_rule(
++                {"security_group_rule": request})
+         except neutron_client_exc.NeutronClientException as e:
+             raise exception.NetworkException(
+                 code=e.status_code, message=e.message)
+diff --git a/manila/share/drivers/service_instance.py b/manila/share/drivers/service_instance.py
+index 3a3b57b..6b8b932 100644
+--- a/manila/share/drivers/service_instance.py
++++ b/manila/share/drivers/service_instance.py
+@@ -336,7 +336,6 @@ class ServiceInstanceManager(object):
+                 name, description)['security_group']
+             for protocol, ports in const.SERVICE_INSTANCE_SECGROUP_DATA:
+                 self.network_helper.neutron_api.security_group_rule_create(
+-                    context,
+                     parent_group_id=sg['id'],
+                     ip_protocol=protocol,
+                     from_port=ports[0],

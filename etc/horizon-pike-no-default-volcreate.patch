@@ -1,0 +1,11 @@
+--- /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/launch-instance-model.service.js~	2017-08-30 05:08:44.000000000 -0600
++++ /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/static/dashboard/project/workflow/launch-instance/launch-instance-model.service.js	2017-11-30 12:29:31.341556532 -0700
+@@ -200,7 +200,7 @@
+         // REQUIRED for JS logic (image | snapshot | volume | volume_snapshot)
+         source_type: null,
+         source: [],
+-        create_volume_default: true,
++        create_volume_default: false,
+         // REQUIRED for JS logic
+         vol_create: false,
+         // May be null

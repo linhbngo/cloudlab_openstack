@@ -1,0 +1,100 @@
+--- /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/native/ofswitch.py~	2017-09-25 08:34:16.000000000 -0600
++++ /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/native/ofswitch.py	2017-12-13 10:41:06.994922408 -0700
+@@ -112,30 +112,41 @@
+         if table_id is None:
+             table_id = ofp.OFPTT_ALL
+ 
++        cookie_masks = []
+         if cookie == ovs_lib.COOKIE_ANY:
+-            cookie = 0
++            #cookie_masks.append((0,0))
+             if cookie_mask != 0:
+                 raise Exception("cookie=COOKIE_ANY but cookie_mask set to %s" %
+                                 cookie_mask)
++            cookies = set([f.cookie for f in self.dump_flows()]) - \
++                  self.preserved_cookies
++            LOG.warning("Preserved cookies for %s: %s", self.br_name,
++                        self.preserved_cookies)
++            for c in cookies:
++                cookie_masks.append((c,ovs_lib.UINT64_BITMASK))
+         elif cookie == COOKIE_DEFAULT:
+-            cookie = self._default_cookie
+-            cookie_mask = ovs_lib.UINT64_BITMASK
++            cookie_masks.append((self._default_cookie,ovs_lib.UINT64_BITMASK))
++        elif cookie in self.preserved_cookies:
++            return
+ 
+-        match = self._match(ofp, ofpp, match, **match_kwargs)
+-        if strict:
+-            cmd = ofp.OFPFC_DELETE_STRICT
+-        else:
+-            cmd = ofp.OFPFC_DELETE
+-        msg = ofpp.OFPFlowMod(dp,
+-                              command=cmd,
+-                              cookie=cookie,
+-                              cookie_mask=cookie_mask,
+-                              table_id=table_id,
+-                              match=match,
+-                              priority=priority,
+-                              out_group=ofp.OFPG_ANY,
+-                              out_port=ofp.OFPP_ANY)
+-        self._send_msg(msg)
++        for (_cookie,_mask) in cookie_masks:
++            match = self._match(ofp, ofpp, match, **match_kwargs)
++            if strict:
++                cmd = ofp.OFPFC_DELETE_STRICT
++            else:
++                cmd = ofp.OFPFC_DELETE
++            LOG.warning("Deleting flow with cookie 0x%(cookie)x",
++                        {'cookie': _cookie})
++            msg = ofpp.OFPFlowMod(dp,
++                                  command=cmd,
++                                  cookie=_cookie,
++                                  cookie_mask=_mask,
++                                  table_id=table_id,
++                                  match=match,
++                                  priority=priority,
++                                  out_group=ofp.OFPG_ANY,
++                                  out_port=ofp.OFPP_ANY)
++            self._send_msg(msg)
+ 
+     def dump_flows(self, table_id=None):
+         (dp, ofp, ofpp) = self._get_dp()
+--- /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/br_cookie.py~	2017-09-25 08:34:16.000000000 -0600
++++ /usr/lib/python2.7/dist-packages/neutron/plugins/ml2/drivers/openvswitch/agent/openflow/br_cookie.py	2017-12-13 10:35:45.466905659 -0700
+@@ -17,6 +17,8 @@
+ 
+ from neutron.agent.common import ovs_lib
+ 
++import os
++import os.path
+ 
+ class OVSBridgeCookieMixin(object):
+     '''Mixin to provide cookie retention functionality
+@@ -26,6 +28,26 @@
+     def __init__(self, *args, **kwargs):
+         super(OVSBridgeCookieMixin, self).__init__(*args, **kwargs)
+         self._reserved_cookies = set()
++        self._preserved_cookies = set()
++
++        if not os.path.exists("/var/lib/neutron/ovs-default-flows.reserved_cookie"):
++            sc = self.request_cookie()
++            self._preserved_cookies.add(sc)
++            self._reserved_cookies.add(sc)
++            f = file("/var/lib/neutron/ovs-default-flows.reserved_cookie",'w')
++            f.write(str(sc))
++            f.close()
++        else:
++            f = file("/var/lib/neutron/ovs-default-flows.reserved_cookie",'r')
++            sc = int(f.read())
++            f.close()
++            self._preserved_cookies.add(sc)
++            self._reserved_cookies.add(sc)
++        pass
++
++    @property
++    def preserved_cookies(self):
++        return set(self._preserved_cookies)
+ 
+     @property
+     def reserved_cookies(self):

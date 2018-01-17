@@ -1,0 +1,156 @@
+#!/bin/bash
+#
+# init script for the ARP filter tables
+#
+# Written by Dag Wieers <dag@wieers.com>
+# Modified by Rok Papez <rok.papez@arnes.si>
+#	     Bart De Schuymer <bdschuym@pandora.be>
+# Adapted to Debian by Jan Christoph Nordholz <hesso@pool.math.tu-berlin.de>
+#
+# Adapted to arptables by David Johnson <johnsond@flux.utah.edu>
+#
+# chkconfig: - 15 85
+# description: ARP filtering tables
+#
+### BEGIN INIT INFO
+# Provides:		arptables
+# Required-Start:	
+# Required-Stop:	
+# Should-Start:		$local_fs
+# Should-Stop:		$local_fs
+# Default-Start:	S
+# Default-Stop:		0 1 6
+# Short-Description:	arptables ruleset management
+# Description:		Saves and restores the state of the arptables rulesets.
+### END INIT INFO
+
+. /lib/lsb/init-functions
+
+test -f /sbin/arptables || exit 0
+
+ARPTABLES_DUMPFILE_STEM=/etc/arptables
+ARPTABLES_SUPPORTED_TABLES="filter"
+
+RETVAL=0
+prog="arptables"
+desc="ARP filtering"
+umask 0077
+
+#default configuration
+ARPTABLES_MODULES_UNLOAD="yes"
+ARPTABLES_LOAD_ON_START="no"
+ARPTABLES_SAVE_ON_STOP="no"
+ARPTABLES_SAVE_ON_RESTART="no"
+ARPTABLES_BACKUP_SUFFIX="~"
+
+config=/etc/default/$prog
+[ -f "$config" ] && . "$config"
+
+function load() {
+	RETVAL=0
+	log_daemon_msg "Restoring arptables rulesets"
+	for table in $ARPTABLES_SUPPORTED_TABLES; do
+		log_progress_msg "$table"
+		if [ -s ${ARPTABLES_DUMPFILE_STEM}.$table ]; then
+			/sbin/arptables-restore < ${ARPTABLES_DUMPFILE_STEM}.$table
+			RET=$?
+			if [ $RET -ne 0 ]; then
+				log_progress_msg "(failed)"
+				RETVAL=$RET
+			fi
+		else
+			log_progress_msg "(no saved state)"
+		fi
+	done
+	if [ -z "$ARPTABLES_SUPPORTED_TABLES" ]; then
+		log_progress_msg "no kernel support"
+	else
+		log_progress_msg "done"
+	fi
+	log_end_msg $RETVAL
+}
+
+function clear() {
+	RETVAL=0
+	log_daemon_msg "Clearing arptables rulesets"
+	for table in $ARPTABLES_SUPPORTED_TABLES; do
+		log_progress_msg "$table"
+		/sbin/arptables -t $table -F
+	done
+
+	if [ "$ARPTABLES_MODULES_UNLOAD" = "yes" ]; then
+		for mod in $(grep -E '^(arpt|arptable)_' /proc/modules | cut -d' ' -f1) arptables; do
+			rmmod $mod 2> /dev/null
+		done
+	fi
+	if [ -z "$ARPTABLES_SUPPORTED_TABLES" ]; then
+		log_progress_msg "no kernel support"
+	else
+		log_progress_msg "done"
+	fi
+	log_end_msg $RETVAL
+}
+
+function save() {
+	RETVAL=0
+	get_supported_tables
+	log_daemon_msg "Saving arptables rulesets"
+	for table in $ARPTABLES_SUPPORTED_TABLES; do
+		log_progress_msg "$table"
+		[ -n "$ARPTABLES_BACKUP_SUFFIX" ] && [ -s ${ARPTABLES_DUMPFILE_STEM}.$table ] && \
+		  mv ${ARPTABLES_DUMPFILE_STEM}.$table ${ARPTABLES_DUMPFILE_STEM}.$table$ARPTABLES_BACKUP_SUFFIX
+		/sbin/arptables-save -t $table > ${ARPTABLES_DUMPFILE_STEM}.$table
+		RET=$?
+		if [ $RET -ne 0 ]; then
+			log_progress_msg "(failed)"
+			RETVAL=$RET
+		fi
+	done
+	if [ -z "$ARPTABLES_SUPPORTED_TABLES" ]; then
+		log_progress_msg "no kernel support"
+	else
+		log_progress_msg "done"
+	fi
+	log_end_msg $RETVAL
+}
+
+case "$1" in
+  start)
+	[ "$ARPTABLES_LOAD_ON_START" = "yes" ] && load
+	;;
+  stop)
+	[ "$ARPTABLES_SAVE_ON_STOP" = "yes" ] && save
+	clear
+	;;
+  restart|reload|force-reload)
+	[ "$ARPTABLES_SAVE_ON_RESTART" = "yes" ] && save
+	clear
+	[ "$ARPTABLES_LOAD_ON_START" = "yes" ] && load
+	;;
+  load)
+	load
+	;;
+  save)
+	save
+	;;
+  status)
+	get_supported_tables
+	if [ -z "$ARPTABLES_SUPPORTED_TABLES" ]; then
+		log_failure_msg "No kernel support for arptables."
+		RETVAL=1
+	else
+		log_daemon_msg "Arptables support available, number of installed rules"
+		for table in $ARPTABLES_SUPPORTED_TABLES; do
+			COUNT=$(( $(/sbin/arptables -t $table -L | sed -e "/^Chain/! d" -e "s/^.*entries: //" -e "s/,.*$/ +/") 0 ))
+			log_progress_msg "$table($COUNT)"
+		done
+		log_end_msg 0
+		RETVAL=0
+	fi
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart|reload|force-reload|load|save|status}" >&2
+	RETVAL=1
+esac
+
+exit $RETVAL

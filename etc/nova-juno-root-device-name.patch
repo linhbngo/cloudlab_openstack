@@ -1,0 +1,38 @@
+--- /usr/lib/python2.7/dist-packages/nova/virt/libvirt/driver.py~	2014-12-09 09:05:35.000000000 -0700
++++ /usr/lib/python2.7/dist-packages/nova/virt/libvirt/driver.py	2015-02-27 12:10:32.216589011 -0700
+@@ -3768,6 +3768,8 @@
+         disk_mapping = disk_info['mapping']
+         img_meta_prop = image_meta.get('properties', {}) if image_meta else {}
+ 
++        LOG.debug("disk_mapping = %s ;; img_meta_prop = %s" % (str(disk_mapping),str(img_meta_prop)))
++
+         CONSOLE = "console=tty0 console=ttyS0 console=ttyAMA0"
+ 
+         guest = vconfig.LibvirtConfigGuest()
+@@ -3812,6 +3814,10 @@
+             # for nova.api.ec2.cloud.CloudController.get_metadata()
+             instance.root_device_name = root_device_name
+ 
++        if img_meta_prop and img_meta_prop.has_key('root_device_name'):
++            root_device_name = img_meta_prop['root_device_name']
++            LOG.debug("using img_meta_prop[root_device_name] = %s" % (str(root_device_name),))
++
+         guest.os_type = vm_mode.get_from_instance(instance)
+ 
+         if guest.os_type is None:
+@@ -3865,6 +3871,7 @@
+                 if CONF.libvirt.virt_type == "xen":
+                     guest.os_cmdline = "ro root=%s" % root_device_name
+                 else:
++                    LOG.debug("root_device_name.1 %s" % (str(root_device_name),))
+                     guest.os_cmdline = ("root=%s %s" % (root_device_name,
+                                                         CONSOLE))
+                     if CONF.libvirt.virt_type == "qemu":
+@@ -6332,6 +6339,7 @@
+         root_info = blockinfo.get_root_info(
+             CONF.libvirt.virt_type, image_meta, root_bdm, disk_bus,
+             cdrom_bus)
++        LOG.debug("root_info %s" % (str(root_info),))
+         return block_device.prepend_dev(root_info['dev'])
+ 
+     def default_device_names_for_instance(self, instance, root_device_name,

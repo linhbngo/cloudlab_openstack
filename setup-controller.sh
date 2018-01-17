@@ -4444,6 +4444,14 @@ if [ -n "$DESIGNATE_PASS" -a "${USE_DESIGNATE_AS_RESOLVER}" = "1" ]; then
     fi
 fi
 
+# setup fixed ip addresses
+
+echo "***"
+echo "running codes to setup interface ports with fixed IP addresses"
+
+source /root/setup/admin-openrc.sh
+openstack network list 
+
 echo "***"
 echo "*** Done with OpenStack Setup!"
 echo "***"

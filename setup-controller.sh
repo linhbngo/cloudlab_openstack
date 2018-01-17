@@ -4449,8 +4449,13 @@ fi
 echo "***"
 echo "running codes to setup interface ports with fixed IP addresses"
 
-source /root/setup/admin-openrc.sh
-openstack network list 
+network_id=`openstack network show -f shell flat-lan-1-net | grep "^id=" | cut -d'"' -f 2`
+subnet_id=`openstack network show -f shell flat-lan-1-net | grep "^subnets=" | cut -d'"' -f 2`
+
+openstack port create --network ${network_id} --fixed-ip subnet=${subnet_id},ip-address=10.11.10.21 testport1
+openstack port create --network ${network_id} --fixed-ip subnet=${subnet_id},ip-address=10.11.10.22 testport2
+openstack port create --network ${network_id} --fixed-ip subnet=${subnet_id},ip-address=10.11.10.23 testport3
+
 
 echo "***"
 echo "*** Done with OpenStack Setup!"

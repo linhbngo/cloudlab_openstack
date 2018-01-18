@@ -4464,7 +4464,7 @@ glance image-create --name OL7 --disk-format vmdk --visibility public --containe
 project_id=`openstack project list -f value | grep admin | cut -d' ' -f 1`
 flavor_id=`openstack flavor list -f value | grep m1.small | cut -d' ' -f 1`
 image_id=`openstack image list -f value | grep OL7 | cut -d' ' -f 1`
-$security_id=`openstack security group list -f value | grep $project_id | cut -d' ' -f 1`
+security_id=`openstack security group list -f value | grep $project_id | cut -d' ' -f 1`
 port_id=`openstack port list -f value | grep testport3 | cut -d' ' -f 1`
 
 # See https://docs.openstack.org/mitaka/install-guide-ubuntu/launch-instance-selfservice.html

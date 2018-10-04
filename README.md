@@ -5,3 +5,7 @@ Openstack Juno on Ubuntu 14 and onwards, within an Emulab/Apt/Cloudlab
 testbed experiment.
 
 - Modifications will be added to setup-controller.sh to further customize the cloud environment
+
+2018/10/04
+This profile is being modified to support the deployment of Docker image. 
+The tentative plan is to modify setup-computer.sh to include the installation steps described in https://wiki.openstack.org/wiki/Docker

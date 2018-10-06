@@ -268,10 +268,31 @@ if [ -f /etc/default/libvirt-guests ]; then
     service_restart libvirt-guests
 fi
 
+echo "BEGIN INSTALLING DOCKER"
+
+#
+# Setup Docker
+#
+
+#apt-get -y install apt-transport-https ca-certificates curl gnupg2 software-properties-common
+#curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -
+#add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+#apt-get -y update
+#apt-get -y install docker-ce
+#docker run hello-world
+#usermod -aG docker nova
+
 service_restart nova-compute
 service_enable nova-compute
 service_restart libvirt-bin
 service_enable libvirt-bin
+
+#
+# Continue setting up docker
+# 
+
+#apt-get install -y python-pip
+
 
 # XXXX ???
 # rm -f /var/lib/nova/nova.sqlite
